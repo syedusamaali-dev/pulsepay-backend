@@ -1,0 +1,64 @@
+gitignore# ---------------------------------------------------------------------------
+# Core Node.js & Dependencies
+# ---------------------------------------------------------------------------
+node_modules/
+jspm_packages/
+web_modules/
+
+# ---------------------------------------------------------------------------
+# Environment Variables & Secrets (CRITICAL: Never commit these!)
+# ---------------------------------------------------------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.### env.production.local
+*.env
+! .env.example
+
+# ---------------------------------------------------------------------------
+# Logs & Debugging
+# ---------------------------------------------------------------------------
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ---------------------------------------------------------------------------
+# Build Outputs & TypeScript Compilation
+# ---------------------------------------------------------------------------
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# Testing, Coverage, & Cache
+# ---------------------------------------------------------------------------
+coverage/
+.nyc_output/
+.cache/
+.eslintcache
+.prettiercache
+.parcel-cache
+
+# ---------------------------------------------------------------------------
+# Operating System & Editor Files
+# ---------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
