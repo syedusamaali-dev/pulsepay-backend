@@ -3,17 +3,23 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { connectDB } from './config/db.js';
+import { connectDB } from './config/db';
+import authRoutes from './routes/auth.routes';
+import transferRoutes from './routes/transfer.routes';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 7860;
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+const PORT = process.env.PORT || 5000;
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:4200';
 
 // Middleware
 app.use(cors({ origin: CLIENT_URL, credentials: true }));
 app.use(express.json());
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/transfer', transferRoutes);
 
 // Create HTTP & Socket.io Server
 const server = http.createServer(app);
