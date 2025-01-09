@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { connectDB } from './config/db';
 import authRoutes from './routes/auth.routes';
 import transferRoutes from './routes/transfer.routes';
+import transactionRoutes from './routes/transaction.routes';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/transfer', transferRoutes);
+app.use('/api/transaction', transactionRoutes);
 
 // Create HTTP & Socket.io Server
 const server = http.createServer(app);

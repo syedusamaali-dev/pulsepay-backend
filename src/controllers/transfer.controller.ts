@@ -1,36 +1,43 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { Account } from '../models/Account';
 import { Transaction } from '../models/Transaction';
 import { User } from '../models/User';
 import { io } from '../server';
+import { AuthenticatedRequest } from '../middleware/auth';
 
-export const executeTransfer = async (req: Request, res: Response): Promise<void> => {
+export const executeTransfer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const { senderAccountId, recipientAccountNumber, amount, description, pin } = req.body;
+    const { recipientAccountNumber, amount, description, pin } = req.body;
+    const userId = req.user?.userId;
 
-    if (!amount || amount <= 0) {
-      res.status(400).json({ error: 'Transfer amount must be greater than zero.' });
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized. User ID missing from token.' });
       return;
     }
 
-    // 1. Fetch Sender Account
-    const senderAccount = await Account.findById(senderAccountId).session(session);
+    if (!amount || amount <= 0) {
+      res.status(400).json({ success: false, error: 'Transfer amount must be greater than zero.' });
+      return;
+    }
+
+    // 1. Automatically fetch the logged-in Sender Account via JWT userId
+    const senderAccount = await Account.findOne({ userId }).session(session);
     if (!senderAccount || senderAccount.status !== 'ACTIVE') {
       throw new Error('Sender account is invalid or frozen.');
     }
 
-    // 2. Fetch Sender User for Fraud PIN Verification
-    const senderUser = await User.findById(senderAccount.userId);
+    // 2. Fetch Sender User record for Fraud PIN Verification
+    const senderUser = await User.findById(userId);
     if (!senderUser) {
       throw new Error('Sender user record not found.');
     }
 
-    // 3. AI Fraud Shield Threshold: If transfer > $5,000, verify 2FA Step-up Security PIN
+    // 3. AI Fraud Shield Threshold: If transfer >= $5,000, verify 2FA Step-up Security PIN
     if (amount >= 5000) {
       if (!pin) {
         throw new Error('HIGH_RISK_FRAUD_TRIGGER: Step-up Security PIN required for transfers over $5,000.');
@@ -56,7 +63,7 @@ export const executeTransfer = async (req: Request, res: Response): Promise<void
       throw new Error('Cannot transfer funds to your own account.');
     }
 
-    // 6. Perform Double-Entry Balances Update
+    // 6. Perform Atomic Double-Entry Balances Update
     senderAccount.balance -= amount;
     recipientAccount.balance += amount;
 
@@ -78,11 +85,11 @@ export const executeTransfer = async (req: Request, res: Response): Promise<void
 
     await transaction.save({ session });
 
-    // Commit Transaction across all documents
+    // Commit Transaction across all documents atomically
     await session.commitTransaction();
     session.endSession();
 
-    // 8. Push Instant WebSockets Event to Recipient
+    // 8. Push Real-Time Socket.io Event to Recipient
     io.to(recipientAccount.userId.toString()).emit('payment_received', {
       referenceId,
       amount,
@@ -97,6 +104,9 @@ export const executeTransfer = async (req: Request, res: Response): Promise<void
       message: 'Transfer completed successfully.',
       data: {
         referenceId,
+        amount,
+        senderAccountNumber: senderAccount.accountNumber,
+        recipientAccountNumber,
         newBalance: senderAccount.balance,
       },
     });
