@@ -11,7 +11,10 @@ const generateAccountNumber = () => {
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { fullName, email, password, pin } = req.body;
+    // 🔍 ADD THIS LOG TO INSPECT THE RAW BODY FROM ANGULAR
+    console.log('--- REGISTER REQUEST BODY ---', req.body);
+
+    const { fullName, email, password, pin, initialDeposit } = req.body;
 
     if (!fullName || !email || !password || !pin) {
       res.status(400).json({ error: 'All fields (fullName, email, password, pin) are required.' });
@@ -24,11 +27,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Hash Password and 2FA Step-up PIN
     const passwordHash = await bcrypt.hash(password, 10);
     const pinHash = await bcrypt.hash(pin, 10);
 
-    // 1. Create User
     const user = new User({
       fullName,
       email,
@@ -37,17 +38,22 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
     await user.save();
 
-    // 2. Automatically provision an active Bank Account with $1,000 starting balance
+    // Parse initialDeposit cleanly (ensure non-zero valid number)
+    const startingBalance = initialDeposit !== undefined && initialDeposit !== null && !isNaN(Number(initialDeposit))
+      ? Number(initialDeposit)
+      : 1000.0;
+
+    console.log('--- ASSIGNED STARTING BALANCE ---', startingBalance);
+
     const account = new Account({
       userId: user._id,
       accountNumber: generateAccountNumber(),
       currency: 'USD',
-      balance: 1000.0,
+      balance: startingBalance, // <--- DYNAMIC STARTING BALANCE
       status: 'ACTIVE',
     });
     await account.save();
 
-    // 3. Sign JWT
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET || 'pulsepay_secret',
@@ -56,18 +62,21 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     res.status(201).json({
       success: true,
-      message: 'User registered and bank account provisioned successfully.',
+      message: 'User registered successfully.',
       data: {
         token,
         user: { id: user._id, fullName: user.fullName, email: user.email },
-        account: { accountNumber: account.accountNumber, balance: account.balance, currency: account.currency },
+        account: { 
+          accountNumber: account.accountNumber, 
+          balance: account.balance, 
+          currency: account.currency 
+        },
       },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
-
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
