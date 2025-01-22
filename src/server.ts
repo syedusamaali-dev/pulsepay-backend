@@ -36,7 +36,7 @@ export const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log(`⚡ Socket connected: ${socket.id}`);
 
-  socket.on('join_account', (userId: string) => {
+  socket.on('join_user_room', (userId: string) => {
     socket.join(userId);
     console.log(`👤 User ${userId} joined personal socket room`);
   });
