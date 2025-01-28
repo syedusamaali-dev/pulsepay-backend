@@ -1,6 +1,3 @@
-<div align="center">
-
-
 # ⚡ PulsePay Backend API
 
 Node.js, Express, TypeScript, and MongoDB REST API powering the PulsePay digital banking engine.
@@ -59,9 +56,7 @@ npm install
 # Start development server
 npm run dev
 
-</div>
 
----
 
 # 📸 Project Preview
 
@@ -104,6 +99,3 @@ npm run dev
 GitHub: https://github.com/syedusamaali-dev
 
 ---
-
-## ⭐ If you like this project, don't forget to Star the repository!
-
