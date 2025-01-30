@@ -5,16 +5,17 @@ WORKDIR /app
 # Copy dependency manifests
 COPY package*.json ./
 
-# Install all dependencies (including TypeScript devDependencies)
+# Install ALL dependencies (including devDependencies like tsc)
 RUN npm install
 
 # Copy source code
 COPY . .
 
-# Build TypeScript source code -> generates dist/ directory
+# Compile TypeScript -> generates dist/server.js
 RUN npm run build
 
-# Expose port (Back4App will map this)
+# Expose container port
 EXPOSE 3000
 
+# Start server
 CMD ["npm", "start"]
