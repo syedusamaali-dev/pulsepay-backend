@@ -1,21 +1,19 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 # Copy dependency manifests
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies like tsc)
+# Install dependencies
 RUN npm install
 
 # Copy source code
 COPY . .
 
-# Compile TypeScript -> generates dist/server.js
+# Compile TypeScript -> dist/
 RUN npm run build
 
-# Expose container port
 EXPOSE 3000
 
-# Start server
 CMD ["npm", "start"]
