@@ -4,7 +4,7 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc && tsc-alias",
+    "build": "tsup src/server.ts --format esm --out-dir dist --clean",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts"
   },
@@ -25,6 +25,7 @@
     "@types/node": "^26.2.0",
     "nodemon": "^3.1.14",
     "tsc-alias": "^1.9.1",
+    "tsup": "^8.5.1",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   }
