@@ -11,7 +11,11 @@ import transactionRoutes from './routes/transaction.routes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+
+// Fallback to 3000 to align with Docker EXPOSE 3000 and the container health checker
+const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0'; 
+
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:4200';
 
 // Middleware
@@ -54,8 +58,8 @@ app.get('/health', (_req, res) => {
 // Start Server
 const startServer = async () => {
   await connectDB();
-  server.listen(PORT, () => {
-    console.log(`🚀 PulsePay Backend running on http://localhost:${PORT}`);
+  server.listen(Number(PORT), HOST, () => {
+    console.log(`🚀 PulsePay Backend running on http://${HOST}:${PORT}`);
   });
 };
 
