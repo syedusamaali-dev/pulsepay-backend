@@ -13,7 +13,7 @@ dotenv.config();
 const app = express();
 
 // Fallback to 3000 to align with Docker EXPOSE 3000 and the container health checker
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 const HOST = '0.0.0.0'; 
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:4200';
