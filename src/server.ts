@@ -12,14 +12,31 @@ dotenv.config();
 
 const app = express();
 
-// Fallback to 3000 to align with Docker EXPOSE 3000 and the container health checker
-const PORT = 3000;
-const HOST = '0.0.0.0'; 
+// Back4App assigns PORT dynamically in production. Fallback to 3000 for local dev.
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = '0.0.0.0';
 
+// Ensure CORS allows your Vercel URL, localhost, or environment variable
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:4200';
+const allowedOrigins = [
+  CLIENT_URL,
+  'https://pulsepay-frontend-pi.vercel.app',
+  'http://localhost:4200'
+];
 
 // Middleware
-app.use(cors({ origin: CLIENT_URL, credentials: true }));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Routes
@@ -29,11 +46,14 @@ app.use('/api/transaction', transactionRoutes);
 
 // Create HTTP & Socket.io Server
 const server = http.createServer(app);
+
 export const io = new Server(server, {
   cors: {
-    origin: CLIENT_URL,
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
+    credentials: true,
   },
+  transports: ['polling', 'websocket'],
 });
 
 // Socket Connection Channel
@@ -58,7 +78,7 @@ app.get('/health', (_req, res) => {
 // Start Server
 const startServer = async () => {
   await connectDB();
-  server.listen(Number(PORT), HOST, () => {
+  server.listen(PORT, HOST, () => {
     console.log(`🚀 PulsePay Backend running on http://${HOST}:${PORT}`);
   });
 };
