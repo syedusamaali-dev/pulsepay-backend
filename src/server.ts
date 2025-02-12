@@ -12,34 +12,46 @@ dotenv.config();
 
 const app = express();
 
-// Back4App assigns PORT dynamically in production. Fallback to 3000 for local dev.
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
 
-// Ensure CORS allows your Vercel URL, localhost, or environment variable
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:4200';
+// Explicit list of allowed production and local origins
 const allowedOrigins = [
-  CLIENT_URL,
+  process.env.CLIENT_URL,
   'https://pulsepay-frontend-pi.vercel.app',
-  'http://localhost:4200'
-];
+  'http://localhost:4200',
+].filter(Boolean) as string[];
 
-// Middleware
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, true);
-      }
-    },
-    credentials: true,
-  })
-);
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, health checks)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // In production, fallback to allowing origin so CORS headers are still written
+      callback(null, true);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200,
+};
+
+// 1. MUST BE FIRST: Apply CORS middleware globally BEFORE any routes or body parsers
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// 2. Body Parser Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// 3. Health Check Endpoint
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'OK', message: 'PulsePay Core API is online!' });
+});
+
+// 4. API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/transfer', transferRoutes);
 app.use('/api/transaction', transactionRoutes);
@@ -70,17 +82,17 @@ io.on('connection', (socket) => {
   });
 });
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'OK', message: 'PulsePay Core API is online!' });
-});
-
 // Start Server
 const startServer = async () => {
-  await connectDB();
-  server.listen(PORT, HOST, () => {
-    console.log(`🚀 PulsePay Backend running on http://${HOST}:${PORT}`);
-  });
+  try {
+    await connectDB();
+    server.listen(PORT, HOST, () => {
+      console.log(`🚀 PulsePay Backend running on http://${HOST}:${PORT}`);
+      console.log(`🔒 Allowed Origins:`, allowedOrigins);
+    });
+  } catch (error) {
+    console.error('❌ Database connection failed:', error);
+  }
 };
 
 startServer();
