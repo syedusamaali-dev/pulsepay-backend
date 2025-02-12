@@ -15,7 +15,6 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0';
 
-// Explicit list of allowed production and local origins
 const allowedOrigins = [
   process.env.CLIENT_URL,
   'https://pulsepay-frontend-pi.vercel.app',
@@ -24,11 +23,9 @@ const allowedOrigins = [
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, health checks)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      // In production, fallback to allowing origin so CORS headers are still written
       callback(null, true);
     }
   },
@@ -38,20 +35,19 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 200,
 };
 
-// 1. MUST BE FIRST: Apply CORS middleware globally BEFORE any routes or body parsers
+// Apply CORS middleware globally (handles OPTIONS preflight automatically)
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
-// 2. Body Parser Middleware
+// Body Parser Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 3. Health Check Endpoint
+// Health Check Endpoint (Required for Back4App health check)
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'OK', message: 'PulsePay Core API is online!' });
 });
 
-// 4. API Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/transfer', transferRoutes);
 app.use('/api/transaction', transactionRoutes);
