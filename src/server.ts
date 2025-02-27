@@ -1,93 +1,94 @@
-import express, { Request, Response } from 'express';
-import { createServer } from 'http';
-import { Server, Socket } from 'socket.io';
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
+import { connectDB } from './config/db';
+import authRoutes from './routes/auth.routes';
+import transferRoutes from './routes/transfer.routes';
+import transactionRoutes from './routes/transaction.routes';
 
 dotenv.config();
 
 const app = express();
-const httpServer = createServer(app);
 
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = '0.0.0.0';
+
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'https://pulsepay-frontend-pi.vercel.app',
+  'http://localhost:4200',
+].filter(Boolean) as string[];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200,
+};
+
+// Apply CORS middleware globally (handles OPTIONS preflight automatically)
+app.use(cors(corsOptions));
+
+// Body Parser Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const allowedOrigins: string[] = [
-  process.env.CLIENT_URL || '',
-  'http://localhost:4200'
-].filter(Boolean);
+// Health Check Endpoint (Required for Back4App health check)
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'OK', message: 'PulsePay Core API is online!' });
+});
 
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true
-}));
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/transfer', transferRoutes);
+app.use('/api/transaction', transactionRoutes);
 
-export const io = new Server(httpServer, {
+// Create HTTP & Socket.io Server
+const server = http.createServer(app);
+
+export const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     methods: ['GET', 'POST'],
-    credentials: true
+    credentials: true,
   },
-  transports: ['websocket', 'polling'],
-  pingTimeout: 60000,
-  pingInterval: 25000
+  transports: ['polling', 'websocket'],
 });
 
-io.use((socket: Socket, next: (err?: Error) => void) => {
-  try {
-    const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization;
-    console.log(`[Socket Handshake] Client ID: ${socket.id} | Auth Present: ${!!token}`);
-    next();
-  } catch (err) {
-    console.error('[Socket Handshake Error]:', err);
-    next(new Error('Internal socket authentication error'));
-  }
-});
-
-io.on('connection', (socket: Socket) => {
-  console.log(`⚡ [Socket Connected] ID: ${socket.id}`);
+// Socket Connection Channel
+io.on('connection', (socket) => {
+  console.log(`⚡ Socket connected: ${socket.id}`);
 
   socket.on('join_user_room', (userId: string) => {
-    if (userId) {
-      socket.join(userId);
-      console.log(`👤 Socket ${socket.id} joined room: ${userId}`);
-    }
+    socket.join(userId);
+    console.log(`👤 User ${userId} joined personal socket room`);
   });
 
-  socket.on('disconnect', (reason: string) => {
-    console.log(`⚠️ [Socket Disconnected] ID: ${socket.id} | Reason: ${reason}`);
+  socket.on('disconnect', () => {
+    console.log(`❌ Socket disconnected: ${socket.id}`);
   });
 });
 
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    service: 'pulsepay-backend',
-    timestamp: new Date().toISOString() 
-  });
-});
-
-// Reads directly from process.env.PORT set in your .env or Dockerfile
-const PORT = process.env.PORT || 5000; 
-const MONGO_URI = process.env.MONGO_URI || '';
-
-async function startServer() {
+// Start Server
+const startServer = async () => {
   try {
-    if (MONGO_URI) {
-      await mongoose.connect(MONGO_URI);
-      console.log('🍃 MongoDB connected successfully.');
-    } else {
-      console.warn('⚠️ MONGO_URI is missing in environment variables!');
-    }
-
-    httpServer.listen(PORT, () => {
-      console.log(`🚀 PulsePay Backend listening on port ${PORT}`);
-      console.log(`🌐 Allowed CORS origins:`, allowedOrigins);
+    await connectDB();
+    server.listen(PORT, HOST, () => {
+      console.log(`🚀 PulsePay Backend running on http://${HOST}:${PORT}`);
+      console.log(`🔒 Allowed Origins:`, allowedOrigins);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
+    console.error('❌ Database connection failed:', error);
   }
-}
+};
 
 startServer();

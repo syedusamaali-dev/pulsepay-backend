@@ -10,7 +10,7 @@ COPY . .
 RUN npm run build
 
 # Explicitly set PORT environment variable for the runtime container
-ENV PORT=3000
-EXPOSE 3000
+ENV PORT=5000
+EXPOSE 5000
 
 CMD ["npm", "start"]
