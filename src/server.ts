@@ -12,7 +12,7 @@ dotenv.config();
 
 const app = express();
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 5000;
 const HOST = '0.0.0.0';
 
 const allowedOrigins = [
@@ -35,14 +35,24 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 200,
 };
 
-// Apply CORS middleware globally (handles OPTIONS preflight automatically)
+// Apply CORS middleware globally
 app.use(cors(corsOptions));
 
 // Body Parser Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health Check Endpoint (Required for Back4App health check)
+// Database connection middleware for Vercel Serverless Function invocations
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Health Check Endpoint
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'OK', message: 'PulsePay Core API is online!' });
 });
@@ -52,7 +62,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/transfer', transferRoutes);
 app.use('/api/transaction', transactionRoutes);
 
-// Create HTTP & Socket.io Server
+// Export app as default for Vercel Serverless deployment
+export default app;
+
+// Create HTTP & Socket.io Server (Used during local development)
 const server = http.createServer(app);
 
 export const io = new Server(server, {
@@ -64,7 +77,6 @@ export const io = new Server(server, {
   transports: ['polling', 'websocket'],
 });
 
-// Socket Connection Channel
 io.on('connection', (socket) => {
   console.log(`⚡ Socket connected: ${socket.id}`);
 
@@ -78,17 +90,19 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start Server
-const startServer = async () => {
-  try {
-    await connectDB();
-    server.listen(PORT, HOST, () => {
-      console.log(`🚀 PulsePay Backend running on http://${HOST}:${PORT}`);
-      console.log(`🔒 Allowed Origins:`, allowedOrigins);
-    });
-  } catch (error) {
-    console.error('❌ Database connection failed:', error);
-  }
-};
+// Run server.listen ONLY when not on Vercel
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  const startServer = async () => {
+    try {
+      await connectDB();
+      server.listen(PORT, HOST, () => {
+        console.log(`🚀 PulsePay Backend running locally on http://${HOST}:${PORT}`);
+        console.log(`🔒 Allowed Origins:`, allowedOrigins);
+      });
+    } catch (error) {
+      console.error('❌ Database connection failed:', error);
+    }
+  };
 
-startServer();
+  startServer();
+}
